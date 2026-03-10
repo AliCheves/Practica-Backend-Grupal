@@ -7,38 +7,45 @@ use Illuminate\Support\Facades\Auth;
 
 class AuthController extends Controller
 {
+    /**
+     * Handle the incoming request.
+     */
     public function login(Request $request)
     {
         if (Auth::attempt($request->only('email', 'password'))) {
+            /** @var \App\Models\User */
             $user = Auth::user();
-            $token = $user->createToken('auth_token');
+            $token = $user->createToken('token-name');
 
             return response()->json([
-                'access_token' => $token->plainTextToken,
-                'token_type' => 'Bearer',
+                'status' => 'success',
+                'message' => 'Login successful',
+                'token' => $token->plainTextToken,
                 'user' => Auth::user(),
             ]);
         }
 
         return response()->json([
-            'message' => 'Invalid credentials',
+            'message' => 'Email or password incorrect',
         ], 422);
     }
 
     public function logout(Request $request)
     {
+        /** @var \App\Models\User */
         $user = Auth::user();
         $user->tokens()->delete();
 
         return response()->json([
-            'message' => 'Logged out successfully',
+            'status' => 'success',
+            'message' => 'Logout successful',
         ]);
     }
 
     public function profile(Request $request)
     {
         return response()->json([
-            'user' => Auth::user(),
+            'profile' => Auth::user(),
         ]);
     }
 }
