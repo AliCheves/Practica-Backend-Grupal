@@ -24,4 +24,52 @@ class BookController extends Controller
 
         return response()->json(BookResource::collection($books));
     }
+    public function store(Request $request)
+    {
+        $this->authorize('create', Book::class);
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'ISBN' => 'required|string|max:255|unique:books,ISBN',
+            'total_copies' => 'required|integer|min:1',
+            'available_copies' => 'nullable|integer|min:0|lte:total_copies',
+        ]);
+
+        if (! array_key_exists('available_copies', $validated)) {
+            $validated['available_copies'] = $validated['total_copies'];
+        }
+
+        $book = Book::create($validated);
+
+        return response()->json(new BookResource($book), 201);
+    }
+
+    public function show(Book $book)
+    {
+        $this->authorize('view', $book);
+        return response()->json(new BookResource($book));
+    }
+
+    public function update(Request $request, Book $book)
+    {
+        $this->authorize('update', $book);
+        $validated = $request->validate([
+            'title' => 'sometimes|required|string|max:255',
+            'description' => 'nullable|string',
+            'ISBN' => 'sometimes|required|string|max:255|unique:books,ISBN,'.$book->id,
+            'total_copies' => 'sometimes|required|integer|min:1',
+        ]);
+
+        $book->update($validated);
+
+        return response()->json(new BookResource($book));
+    }
+
+    public function destroy(Book $book)
+    {
+        $this->authorize('delete', $book);
+        $book->delete();
+
+        return response()->json(null, 204);
+    }
 }
