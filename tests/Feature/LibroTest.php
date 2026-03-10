@@ -1,15 +1,21 @@
 <?php
 uses(Illuminate\Foundation\Testing\RefreshDatabase::class);
-beforeEach(function () {
-    $this->seed(\Database\Seeders\BookSeeder::class);
-});
 use App\Models\User;
 use Laravel\Sanctum\Sanctum;
+use Spatie\Permission\Models\Role;
+
+beforeEach(function () {
+    $this->seed(\Database\Seeders\BookSeeder::class);
+    Role::firstOrCreate(['name' => 'bibliotecario', 'guard_name' => 'web']);
+    Role::firstOrCreate(['name' => 'Docente', 'guard_name' => 'web']);
+    Role::firstOrCreate(['name' => 'Estudiante', 'guard_name' => 'web']);
+});
 
 
 
 test('puede listar un libro', function () {
     $user = User::factory()->create();
+    $user->assignRole('bibliotecario');
     Sanctum::actingAs($user);
     $firstSeededBook = \App\Models\Book::query()->first();
     $response = $this->getJson('api/v1/books');
@@ -23,6 +29,7 @@ test('puede listar un libro', function () {
 
 test('Puede crear un libro', function () {
     $user = User::factory()->create();
+    $user->assignRole('bibliotecario');
     Sanctum::actingAs($user);
 
 $response = $this->postJson('api/v1/books', [
@@ -53,6 +60,7 @@ $response = $this->postJson('api/v1/books', [
  
 test("Puede mostrar un libro", function () {
     $user = User::factory()->create();
+    $user->assignRole('bibliotecario');
     Sanctum::actingAs($user);
     $book = \App\Models\Book::factory()->create();
 
@@ -69,6 +77,7 @@ test("Puede mostrar un libro", function () {
 
 test("Puede actualizar un libro", function () {
     $user = User::factory()->create();
+    $user->assignRole('bibliotecario');
     Sanctum::actingAs($user);
     $book = \App\Models\Book::factory()->create();
 
@@ -98,6 +107,7 @@ test("Puede actualizar un libro", function () {
 
 test("Puede eliminar un libro", function () {
     $user = User::factory()->create();
+    $user->assignRole('bibliotecario');
     Sanctum::actingAs($user);
     $book = \App\Models\Book::factory()->create();
 
