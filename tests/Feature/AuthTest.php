@@ -3,34 +3,94 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
 class AuthTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_it_can_login()
+    /**
+     * Test it can login successfully and issue an API token.
+     */
+    public function testItCanLoginSuccessfully(): void
     {
-        // Preparacion
         $user = User::factory()->create([
-            'password' => bcrypt('test123'),
+            'password' => 'password123',
         ]);
 
-        // Ejecucion
-        $response = $this->post('/api/v1/login', [
+        $response = $this->postJson('/api/v1/auth/login', [
             'email' => $user->email,
-            'password' => 'test123',
+            'password' => 'password123',
         ]);
 
-        // Verificacion
-        $response->assertStatus(200);
-        $response->assertJsonStructure([
-            'access_token',
-            'token_type',
-            'user',
-        ]);
+        $response->assertOk()
+            ->assertJsonPath('status', 'success')
+            ->assertJsonPath('user.email', $user->email)
+            ->assertJsonStructure([
+                'status',
+                'message',
+                'token',
+                'user' => ['id', 'name', 'email'],
+            ]);
 
-        $this->assertAuthenticatedAs($user);
+        $this->assertDatabaseCount('personal_access_tokens', 1);
+    }
+
+    /**
+     * Test it returns the authenticated user information using a bearer token.
+     */
+    public function testItCanReturnAuthenticatedUserInformation(): void
+    {
+        $user = User::factory()->create();
+        $token = $user->createToken('test-token')->plainTextToken;
+
+        $response = $this->withToken($token)
+            ->getJson('/api/v1/auth/profile');
+
+        $response->assertOk()
+            ->assertJson([
+                'profile' => [
+                    'email' => $user->email,
+                ],
+            ]);
+    }
+
+    /**
+     * Test it can logout successfully and invalidate the issued token.
+     */
+    public function testItCanAllowSuccessfullyLogout(): void
+    {
+        $user = User::factory()->create();
+
+        $loginResponse = $this->postJson('/api/v1/auth/login', [
+            'email' => $user->email,
+            'password' => 'password',
+        ]);
+        $token = $loginResponse->json('token');
+
+        $logoutResponse = $this->withToken($token)
+            ->postJson('/api/v1/auth/logout');
+
+        $logoutResponse->assertOk()
+            ->assertJsonPath('status', 'success');
+
+        $this->assertDatabaseEmpty('personal_access_tokens');
+
+        app('auth')->forgetGuards();
+
+        $this->flushHeaders()
+            ->withToken($token)
+            ->getJson('/api/v1/auth/profile')
+            ->assertUnauthorized();
+    }
+
+    /**
+     * Test protected endpoints reject unauthenticated requests.
+     */
+    public function testProtectedEndpointsRequireAuthentication(): void
+    {
+        $this->getJson('/api/v1/auth/profile')
+            ->assertUnauthorized();
     }
 }
