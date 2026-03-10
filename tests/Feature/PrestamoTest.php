@@ -6,10 +6,17 @@ use App\Models\User;
 use App\Models\Book;
 use App\Models\Loan;
 use Laravel\Sanctum\Sanctum;
+use Spatie\Permission\Models\Role;
+
+beforeEach(function () {
+    Role::firstOrCreate(['name' => 'Docente', 'guard_name' => 'web']);
+    Role::firstOrCreate(['name' => 'Estudiante', 'guard_name' => 'web']);
+});
 
 // PRESTAR
 test('puede prestar un libro', function () {
     $user = User::factory()->create();
+    $user->assignRole('Docente');
     Sanctum::actingAs($user);
     $book = Book::factory()->create(['available_copies' => 5, 'is_available' => true]);
 
@@ -37,6 +44,7 @@ test('puede prestar un libro', function () {
 
 test('no puede prestar un libro sin copias disponibles', function () {
     $user = User::factory()->create();
+    $user->assignRole('Docente');
     Sanctum::actingAs($user);
     $book = Book::factory()->create(['available_copies' => 0, 'is_available' => false]);
 
@@ -51,6 +59,7 @@ test('no puede prestar un libro sin copias disponibles', function () {
 
 test('valida los datos al prestar un libro', function () {
     $user = User::factory()->create();
+    $user->assignRole('Docente');
     Sanctum::actingAs($user);
 
     $response = $this->postJson('api/v1/loans', []);
@@ -73,6 +82,7 @@ test('no autorizado para prestar sin autenticacion', function () {
 // DEVOLVER
 test('puede devolver un préstamo activo', function () {
     $user = User::factory()->create();
+    $user->assignRole('Docente');
     Sanctum::actingAs($user);
     $book = Book::factory()->create(['available_copies' => 4, 'is_available' => true]);
     $loan = Loan::create([
@@ -100,6 +110,7 @@ test('puede devolver un préstamo activo', function () {
 
 test('no puede devolver un préstamo ya devuelto', function () {
     $user = User::factory()->create();
+    $user->assignRole('Docente');
     Sanctum::actingAs($user);
     $book = Book::factory()->create();
     $loan = Loan::create([
@@ -116,6 +127,7 @@ test('no puede devolver un préstamo ya devuelto', function () {
 
 test('error al devolver préstamo inexistente', function () {
     $user = User::factory()->create();
+    $user->assignRole('Docente');
     Sanctum::actingAs($user);
 
     $response = $this->postJson('api/v1/loans/999/return');
@@ -138,6 +150,7 @@ test('no autorizado para devolver sin autenticacion', function () {
 // HISTORIAL
 test('puede obtener el historial de préstamos', function () {
     $user = User::factory()->create();
+    $user->assignRole('Docente');
     Sanctum::actingAs($user);
 
     $book = Book::factory()->create();
@@ -157,6 +170,7 @@ test('puede obtener el historial de préstamos', function () {
 
 test('obtiene historial vacío si no hay préstamos', function () {
     $user = User::factory()->create();
+    $user->assignRole('Docente');
     Sanctum::actingAs($user);
 
     $response = $this->getJson('api/v1/loans');
