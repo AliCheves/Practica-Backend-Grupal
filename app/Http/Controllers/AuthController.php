@@ -2,39 +2,41 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
-    /**
-     * Handle the incoming request.
-     */
     public function login(Request $request)
     {
-        if (Auth::attempt($request->only('email', 'password'))) {
-            /** @var \App\Models\User */
-            $user = Auth::user();
-            $token = $user->createToken('token-name');
+        $credentials = $request->validate([
+            'email' => ['required', 'email'],
+            'password' => ['required', 'string'],
+        ]);
 
+        /** @var \App\Models\User|null $user */
+        $user = User::where('email', $credentials['email'])->first();
+
+        if (! $user || ! Hash::check($credentials['password'], $user->password)) {
             return response()->json([
-                'status' => 'success',
-                'message' => 'Login successful',
-                'token' => $token->plainTextToken,
-                'user' => Auth::user(),
-            ]);
+                'message' => 'Email or password incorrect',
+            ], 422);
         }
 
+        $token = $user->createToken('token-name');
+
         return response()->json([
-            'message' => 'Email or password incorrect',
-        ], 422);
+            'status' => 'success',
+            'message' => 'Login successful',
+            'token' => $token->plainTextToken,
+            'user' => $user,
+        ]);
     }
 
     public function logout(Request $request)
     {
-        /** @var \App\Models\User */
-        $user = Auth::user();
-        $user->tokens()->delete();
+        $request->user()->currentAccessToken()?->delete();
 
         return response()->json([
             'status' => 'success',
@@ -45,7 +47,7 @@ class AuthController extends Controller
     public function profile(Request $request)
     {
         return response()->json([
-            'profile' => Auth::user(),
+            'profile' => $request->user(),
         ]);
     }
 }
